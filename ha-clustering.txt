@@ -1,0 +1,328 @@
+
+#? clusters types:
+
+	- ha clusters
+	- load balancing clusters
+	- high performence clusters
+	
+	
+#? shared storage:
+
+	- drdb (distributed replicated block device)
+	- iscsi (target/lun)
+	
+
+
+#> quorum: majority in cluster..each cluster is 1 vote..sometimes cluster-node can be split/isolated..but does not go down. 
+				then both think themself as cluster.  to check quorum status in every cluster nodes.
+
+		+ corosync-quorumtool
+		+ crm_mon					|| monitor pcs status
+
+	some common quorum options. options are available to /etc/corosync/corosync.conf 
+	
+			--wait_for_all	> wait for all nodes to join cluster before quorum calcualtion
+			--auto_tie_breaker	
+			--last_man_standing	
+			--two_node	> allow 2 nodes cluster.
+
+	after applying changes on one node, use this synchronize the cluster config allow other nodes.
+	
+			+ pcs cluster sync
+			+ pcs cluster start --all
+	
+	to verify 
+	
+			+ corosync-quorumtool
+
+#> fencing/stonith: is the isolation of a failed node so that it does not cause disruption to a computer cluster...
+			fence types:
+	
+		- disk
+		- hypervisor
+		- power switch 
+		- management board
+		- test agents
+
+	
+		+ stonith -L		|| show available stonith
+		
+		+ pcs stonith list
+		+ pcs stonith describe 
+		
+		+ pcs stonith create <fencing-name> fencing_agent parameters
+		
+	
+	some common fencing options
+
+		- stonith-timeout
+		- priority
+		- pcmk_host_map
+		- pcmk_host_check
+		
+		
+	"fence-virtd" is used to fence. as multiple hypervisor are supported this.
+		
+			+ yum install -y fence-virt fence-virtd fence-virtd-libvirt fence-virtd-multicast
+			
+			+ mkdir -p /etc/cluster
+			+ dd if=/dev/urandom of=/etc/cluster/fence_xvm.key bs=1k count=4
+			
+			+ fence_virtd -c
+			+ systemctl enable --now fence-virtd
+			
+			+ fence_xvm
+	
+	# copy this (/etc/cluster/fence_xvm.key) to all nodes..
+	
+			+ pcs stonith create fence_vm_one 		fence_xvm port="vm_one" 	pcmk_host_list="vm_one.cluster.local"
+			+ pcs stonith create fence_vm_two 		fence_xvm port="vm_two" 	pcmk_host_list="vm_two.cluster.local"
+			+ pcs stonith create fence_vm_three 	fence_xvm port="vm_three" 	pcmk_host_list="vm_three.cluster.local"			
+			
+			
+	# default traffic between fence_xvm and fence_virt is multicast. make sure firewall allow multicast. 
+	
+			+ firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT 0 -m pkttype --pkt-type multicast -j ACCEPT
+			or
+			+ firewall-cmd --permanent --add-port=1229/udp
+
+		
+			+ systemctl status fence_virtd
+			+ virsh list
+		
+		
+			+ pcs stonith show
+		
+---------------------------------------------------------------------------------------------------------------------------------------
+
+ 	+ yum install corosync pacemaker pcs fence-agenets-all
+	+ systemctl enable/start pcsd
+	
+	+ systemctl status pcsd
+	+ systemctl status corosync
+
+
+	+ firewall-cmd --permanent --add-service=high-availability 
+	+ systemctl enable --now pcsd
+	
+	+ echo password | password --stdin hacluster
+	
+	
+# nodes need to authenticated:
+	+ pcs cluster auth node1.cluster.local node2.cluster.local
+
+
+# to create a cluster:
+	+ pcs cluster setup --start --name my_cluster node1.cluster.local node2.cluster.local
+
+
+
+# now enable the cluster on boot and start the service. Because after reboot, its not rejoined.
+	+ pcs cluster enable --all
+	+ pcs cluster start --all
+	
+	
+	+ pcs cluster status			|| verify the operations.. stack:unknow unless pcs cluster enable --all ..stack:corosync
+	+ pcs property list
+	+ pcs status resources
+	
+	
+	
+	+ pcs cluster stop node1.cluster.local
+	+ pcs cluster start node1.cluster.local
+		
+	+ pcs cluster stop node2.cluster.local
+	+ pcs cluster start node2.cluster.local
+
+
+
+# to view/modify corosync > nano /etc/corosync/corosync.conf
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+	CIB - Cluster Information Base
+	CRMD - Cluster Resource Management Daemon
+	LRMD - Local Resource Management Daemon
+	
+	OCF - Open Cluster Framework
+	
+
+# managing cluster
+
+	+ pcs cluster edit					if enviroment variable not set > "export EDITOR=/usr/bin/vim"
+	
+	
+	+ pcs resource list	| less							|| cluster available list
+	+ pcs resource list | grep -i dummy					|| to find available resource
+	
+	
+	+ pcs resource describe IPaddr2 | less				|| check deatils about pcs
+	
+	+ pcs resource create httpfs Filesyste device=/dev/sdc1 directory=/var/www/html fstype=ext4
+	+ pcs resource create myhaip IPaddr2 ip=10.0.0.150 cidr_netmask=24
+	
+	+ pcs resource show
+	+ pcs resource show httpfs
+	
+
+# another ways to manage cluster is HAWK. (High Availablity Web Konsole)	
+
+
+
+# first option is to disable STONITH. this component helps to protect data from being corrupted by concurrent access. 
+
+	+ pcs property set stonith-enabled=false
+	+ pcs property set no-quorum-policy=ignore		|| also ignore the quorum policy
+
+	+ pcs property list								|| to check above operations.
+
+
+	+ pcs property list --all | less				|| stonith-enabled.. maintenance-mode.. no-quorum-policy
+	
+	
+	
+-------------------------------------------------------------------------------------------------------------------------------------
+
+# resource-agent: is anything managed by cluster.
+
+
+	+ pcs resource create v_ip ocf:heartbeat:IPaddr2 ip=192.168.0.100 cidr_netmask=32 op monitor interval=20s
+	+ pcs resource create webserver ocf:heartbeat:nginx configfile=/etc/nginx/nginx.conf op monitor timeout=”5s” interval=”5s”
+
+	+ pcs status resources			|| if two resources is seen.. ‘v_ip’ and ‘webserver’.. it means the floating IP and nginx web server have been added.
+
+# configure constraints:
+
+
+	+ pcs constraint colocation add webserver v_ip INFINITY 		|| set nginx resource (webserver) to always run on the same host where v_ip is active.
+	+ pcs constraint order v_ip then webserver						|| to check the resources are running on the same host, we can invoke:
+
+	+ pcs status
+
+
+
+
+
+	+ pcs resource create apache-ip IPaddr2 ip=192.168.0.100 cidr_netmask=24
+	+ pcs resource show
+	
+	+ pcs resource create apache-servce apache
+	+ pcs resource show
+	
+	
+
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+# cd /usr/lib/ocf/resource.d/heartbeat/  ls				|| list of resource
+
+# types of resource constraint. a score can be happened. INFINITY(1,000,000) must happen.
+
+		- location : which node should it run
+		- colocation : with which resource should it run
+		- order :	after or before which
+		
+# type of resource
+
+		- primitive
+		- clone
+		- multi state (master/slave) | (active/passive)
+		- group
+
+		
+		+ pcs constraint location web prefers node1
+		+ pcs constraint location web prefers node1=10000
+		+ pcs constraint location web prefers node2=500
+		
+		+ pcs constraint location web avoids node1
+		
+		+ pcs constraint colocation add web-One with db-One		
+		+ pcs constraint colocation add web-One with db-One	-INFINITY
+
+		+ pcs constraint order webip then webserver
+		
+	
+# resources and groups can be created independently. first create resources, then create the group..
+
+		+ pcs resource create my-ip-one IPaddr2 ip=10.0.0.10 cidr_netmask=24 --group ip-group 
+		+ pcs resource create my-ip-two IPaddr2 ip=10.0.0.20 cidr_netmask=24 --group ip-group 
+		
+		+ pcs resource update my-ip-one nic=eth0
+		+ pcs resource update my-ip-two nic=eth0		
+	
+		+ pcs resource delete my-ip-one my-ip-two 
+
+	
+		+ pcs status 
+		
+		+ pcs resource create my-fs Filesystem device=/dev/sdb1	  directory=/myfs	--group mygroup
+		
+		+ pcs resource failcount show
+		+ pcs resource debug-start myresource
+		+ pcs resource failcount myresource mynode
+		+ pcs resource cleanup myresource
+		
+		
+	
+# working with gorup and constraint
+
+	
+		+ pcs resource group add apache-group apache-ip
+		+ pcs resource group add apache-group apache-service
+		+ pcs resource group list
+		
+		+ pcs resource create ftp-ip IPaddr2 ip=10.0.0.150 cidr_netmask=24 --group ftp-group
+		
+		+ pcs resource list | grep -i ftp	|| rpm-qa | grep ftp  > systemd: vsftpd  > yum install vsftpd
+		
+		+ pcs resource create ftp-service vsftpd --group ftp-group					|| show error as vsftpd is system-installed.. to ignore this add systemd:vsftpd
+		+ pcs resource create ftp-service systemd:vsftpd --group ftp-group		
+		+ pcs resource group list
+
+
+
+		+ pcs resource enable/disable 				|| to manage resource
+		+ pcs resource restart 
+		+ pcs resource update 						|| resource property can be changed
+		+ pcs resource op add/remove				|| operations can be changed as well
+		+ pcs resource relocate 					|| relocate resources one to another node according to location constraints
+
+
+		+ pcs resource [un]manage 						
+		+ pcs resource utilization my-resource ram=20 cpu=10		|| if node has sufficient resources. apply cpu and ram
+		
+		
+		
+		+ pcs cluster start/stop 		node1.cluster.local			|| start/stop cluster service.
+		+ pcs cluster enable/disable 	node2.cluster.local			|| enabling/disabling cluster service for automatic joining.
+		
+		+ pcs cluster node {add| remove} node4.cluster.local
+		
+		after adding the node. auth is used to authorize existing nodes. pcsd+hacluster make sure are installed.
+		+ pcs cluster auth node4.cluster.local 
+		
+	# removing nodes
+		+ pcs cluster node remove node4.cluster.local
+		+ pcs stonith delete node4.cluster.local
+		
+		+ pcs node status
+		
+		+ pcs cluster standby nod4.cluster.local				|| nodes temporarily cant play in the cluster
+		+ pcs cluster unstandby nod4.cluster.local
+		
+		
+		+ pcs cluster [un]maintenance [--all | <node>]			|| standby is no longer to use resource but maintenance mode will run resources
+		+ pcs resource [un]move									|| resource can be migrated  
+		
+		+ pcs resource clear | ban
+		
+		+ pcs resource failcount show							|| to monitor
+		
+	# after making any changes on one node, use ( + pcs cluster sync) to synchronize the changes.
+	  and use < + pcs cluster reload corosync> to active the changes.
+	  
+		+ pcs cluster sync
+		+ pcs cluster reload corosync
+		
