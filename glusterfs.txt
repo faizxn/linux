@@ -1,0 +1,121 @@
+
+
+ # terminology in gluster-fs storage :
+	
+	+ trusted storage pool : is a group of multiple servers that trust each other and form a storage cluster.
+	+ node : a node is storage server which participate in trusted storage pool
+	+ brick : a brick is LVM based file system mounted on folder or directory.
+	+ volume : is a file system which is presented or shared to the clients over the network. A volume can be mounted using glusterfs, nfs and smbs methods.
+
+
+ # different types of volumes:
+	
+	+ distribute volumes : default volume which is created when no option is specified while creating volume. volume files will be distributed across the the bricks.
+	+ replicate volumes  : volume files will replicated or mirrored across the bricks.
+	+ striped volumes 	 : this type of volume larger files are cut or split into chunks and then distributed across the bricks.
+	
+	
+	10.0.0.10  node-1.gluster.local node-1
+	10.0.0.20  node-2.gluster.local node-2
+	10.0.0.30  node-3.gluster.local node-3
+	
+	
+	+ yum install centos-release-gluster -y		|| server
+	+ yum install epel-release -y
+	+ yum install glusterfs-server -y
+	
+	+ yum install glusterfs-fuse -y				|| client
+	
+	+ systemctl start glusterd
+	+ systemctl enable glusterd
+	
+	+ firewall-cmd --zone=public --add-port=24007-24008/tcp --permanent
+	+ firewall-cmd --zone=public --add-port=24009/tcp --permanent
+	+ firewall-cmd --zone=public --add-service=nfs --add-service=samba --add-service=samba-client --permanent
+	+ firewall-cmd --zone=public --add-port=111/tcp --add-port=139/tcp --add-port=445/tcp --add-port=965/tcp --add-port=2049/tcp --add-port=38465-38469/tcp --add-port=631/tcp --add-port=111/udp --add-port=963/udp --add-port=49152-49251/tcp --permanent
+	+ firewall-cmd --reload
+	
+	
+	
+	+ gluster peer probe 	node-2 node-3															|| attach node
+	+ gluster peer detach 	node-2 node-3															|| deattach node
+
+	+ gluster peer status	
+	+ gluster pool list
+	
+	
+	
+# create brick:
+
+	+ pvcreate /dev/sdb  
+	+ vgcreate vg_bricks /dev/sdb
+	
+	+ lvcreate -n dist_brick1 -l 50%FREE   vg_bricks												|| -n name-of-volume
+	+ lvcreate -n dist_brick2 -l 50%FREE   vg_bricks
+	
+
+	+ mkfs.xfs -i size=512 /dev/vg_bricks/dist_brick1
+	+ mkfs.xfs -i size=512 /dev/vg_bricks/dist_brick2
+	
+	+ mkdir -p /bricks/dist_brick1
+	+ mkdir -p /bricks/dist_brick2
+		
+	+ mount /dev/vg_bricks/dist_brick2 /bricks/dist_brick1/											|| temp mount
+	+ mount /dev/vg_bricks/dist_brick2 /bricks/dist_brick2/
+
+	+ nano /etc/fstab 	->	/dev/vg_bricks/dist_brick1 /bricks/dist_brick1		xfs 	rw,noatime,inode64,nouuid 	1 2			|| permanent mount
+	+ nano /etc/fstab	->	/dev/vg_bricks/dist_brick2 /bricks/dist_brick2 		xfs 	rw,noatime,inode64,nouuid 	1 2
+
+
+add brick to a existing volume:
+	
+	+ gluster volume add-brick dist-vol node-1:/dist_brick3 force
+	+ gluster volume add-brick dist-vol node-1:/dist_brick4 force
+
+	+ gluster volume remove-brick dist-vol node-1:/dist_brick3 start
+	+ gluster volume remove-brick dist-vol node-1:/dist_brick4 start > commit	
+
+# create volume:
+
+	+ gluster volume create dist-vol 				node-1.gluster.local:/bricks/dist_brick1/ node-2.gluster.local:/bricks/dist_brick2/			|| distribute volume
+	+ gluster volume create repli-vol replica 2 	node-1.gluster.local:/bricks/dist_brick1/ node-2.gluster.local:/bricks/dist_brick2/			|| replicated volume
+	
+	+ gluster volume start/stop dist-vol															|| volume has to start after creating the volume
+	+ gluster volume start/stop repli-vol
+	
+	+ gluster volume delete repli-vol dist-vol														|| delete volume
+	
+	+ gluster volume info dist-vol | repli-vol
+	+ gluster volume list
+	+ gluster volume status
+
+
+# create qouta to volume:
+	
+	+ gluster volume qouta dist-vol  list															|| show qouta not enabled
+	+ gluster volume qouta repli-vol list	
+	
+	+ gluster volume qouta repli-vol enable			
+	+ gluster volume qouta repli-vol list			
+	
+	+ gluster volume qouta dist-vol/repli-vol limit-usage / 					1G	
+	+ gluster volume qouta dist-vol/repli-vol limit-usage /bricks/dist_brick1 	1G	
+	
+	
+volume rebalance:
+
+	+ ls /brick/dist_brick1			|| directiry >  file-one file-two file-three file-four
+
+	+ gluster volume add-brick dis-volume node-3:/bricks/dist_brick1								|| another bricks added for rebalancing files
+	+ gluster volume info
+
+	+ gluster volume rebalance dis-volume start														|| start rebalacing
+	+ gluster volume rebalance dis-volume status													|| status rebalacing
+
+	+ ls /brick/dist_brick1			|| directiry >  file-one file-three
+	
+
+	+ gluster volume remove-brick dist-vol node-1:/dist_brick3 start 								|| files again migrated to dist_brick1 when remove-brick
+	+ gluster volume remove-brick dist-vol node-1:/dist_brick3 commit 								|| then commit 
+	
+	+ ls /brick/dist_brick1			|| directiry >  file-one file-two file-three file-four			|| again show four available files.
