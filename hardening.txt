@@ -1,0 +1,45 @@
+
+	
+	+ yum -y install yum-plugin-security	
+	+ yum updateinfo 
+	+ yum updateinfo list
+	+ yum updateinfo RHSA-2016:0176 | less						
+	
+	
+	+ apt -s dist-upgrade | grep "^Inst" | grep -i secure												||  -i > insensitive-case
+	+ apt -s dist-upgrade | grep "^Inst" | awk -F " "'{ print $2 }' | xargs apt-get install
+	+ apt-cache search net-tools																		|| validate package
+
+
+	-> disk-encryption:
+
+	+ fdisk /dev/sdb
+	+ cryptsetup luksFormat /dev/sdb1
+	+ cryptsetup luksOpen /dev/sdb1 secret-disk
+	+  ls /dev/mapper/													
+
+	+ mkfs.ext4 /dev/mapper/secret-disk
+	+ blkid
+	+ mkdir secret-disk
+	+ mount /dev/mapper/secret-disk /root/secret-disk/													|| temp-mount or permanent mount
+	
+	+ cd root/secret-disk/		> touch file-1 file-2 file-3 file-4
+	
+	+ cryptsetup -v status secret-disk
+	+ cryptsetup luksClose /dev/mapper/secret-disk
+	
+	
+
+
+
+	
+	
+	
+	
+
+
+
+
+
+ 
+ 
