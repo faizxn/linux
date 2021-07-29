@@ -1,0 +1,103 @@
+
+
+
+
+
+
+#> cat /etc/bind/named.conf.options
+
+	acl "trusted" {
+			172.16.100.0/24; 
+			10.0.0.0/24;
+	};	
+	
+	options {
+			directory "/var/cache/bind";
+			recursion yes;
+			allow-recursion { localhost; trusted; };
+			listen-on port 53 { localhost; 10.0.0.130; };
+	
+			allow-query { localhost; trusted; };
+			allow-transfer { none; };
+	
+			dnssec-validation auto;
+			listen-on-v6 { none; };
+	};
+	
+
+
+#>	cat /etc/bind/zones/db.forward.tecsecurity.com
+
+		$TTL    604800
+		@       IN      SOA     ns1.tecsecurity.com. root.tecsecurity.com. (
+									2           ; Serial
+								604800          ; Refresh
+								86400           ; Retry
+								2419200         ; Expire
+								604800 )        ; Negative Cache TTL
+		;		
+		  		 IN      NS      ns1.tecsecurity.com.
+		ns1      IN      A       10.0.0.130
+		
+
+#>  cat  /etc/bind/zones/db.reverse.tecsecurity.com
+
+		$TTL    604800
+		@       IN      SOA     ns1.tecsecurity.com. root.tecsecurity.com. (
+									2         ; Serial
+								604800         ; Refresh
+								86400         ; Retry
+								2419200         ; Expire
+								604800 )       ; Negative Cache TTL
+		;
+				
+				 IN      NS      ns1.tecsecurity.com.
+		130      IN      PTR     ns1.tecsecurity.com.
+
+
+
+#>  cat  /etc/bind/zones/db.20.0.0
+
+	$TTL    38400
+	@       IN      SOA     ns1.tecsecurity.com. root.tecsecurity.com. (
+									2     ; Serial
+									10800           ; Refresh
+									3600            ; Retry
+									604800          ; Expire
+									38400 )         ; Negative Cache TTL
+	
+
+						IN      NS      ns1.tecsecurity.com.
+	$GENERATE 1-254 $ 	IN 		PTR 	20-0-0-$.tecsecurity.
+
+
+
+		
+
+#>  cat /etc/bind/named.conf
+
+	zone "dotinternetbd.com" {
+		type master;
+		file "/etc/bind/zones/db.forward.dotinternetbd.com";
+		allow-update { none; };
+	};
+	
+	
+	zone "0.0.10.in-addr.arpa" {
+		type master;
+		file "/etc/bind/zones/db.reverse.dotinternetbd.com";
+		allow-update { none; };
+	};
+	
+	
+	
+	named-checkzone 0.0.10.in-addr.arpa zones/db.forward.dotinternetbd.com
+	named-checkzone 0.0.10.in-addr.arpa zones/db.reverse.dotinternetbd.com
+	named-checkzone zone zones/db.forward.dotinternetbd.com
+	named-checkzone zone zones/db.reverse.dotinternetbd.com	
+	named-checkconf -z named.conf
+	
+	service bind9 restart
+
+
+
