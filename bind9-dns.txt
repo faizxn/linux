@@ -1,5 +1,6 @@
 
 
+#### ipv4-dns configuration ####
 
 
 
@@ -98,6 +99,108 @@
 	named-checkconf -z named.conf
 	
 	service bind9 restart
+
+
+
+
+#### ipv6-dns configuration ####
+
+
+
+
+
+    host -a 2401:f40:8000::8888
+    host 2401:f40:8000::8888
+	host -6 ipv6-dns.dotinternetbd.com
+
+____________________________
+
+
+    ++ cat /etc/bind/named.conf.options
+
+	acl "trusted" {
+		2401:f40::/32;
+	};
+		
+	options {
+		directory "/var/cache/bind";
+		recursion yes;
+		allow-recursion { localhost; trusted; };
+		listen-on-v6 port 53 { 2401:f40:8000::8888 ; };
+	
+		allow-query { localhost; trusted; };
+		allow-transfer { none; };
+	
+		dnssec-validation auto;
+		listen-on-v6 { any; };
+	};
+
+____________________________
+
+
+    ++ cat /etc/bind/named.conf
+
+	include "/etc/bind/named.conf.options";
+	include "/etc/bind/named.conf.local";
+	include "/etc/bind/named.conf.default-zones";
+
+
+	zone "dotinternetbd.com" IN {
+		type master;
+		file "/etc/bind/zones/db.forward.dotinternetbd.com";
+		allow-update { none; };
+	};
+	
+
+	2401:f40:8000::8888
+	2401:0f40:8000:0000    0000:0000:000:8888
+	0.0.0.0.0.0.0.8.0.4.f.0.1.0.4.2	
+
+	
+	zone "0.0.0.0.0.0.0.8.0.4.f.0.1.0.4.2.ip6.arpa" IN {
+		type master;
+		file "/etc/bind/zones/db.reverse.dotinternetbd.com";
+		allow-update { none; };
+	};
+	
+
+____________________________
+	
+	
+	++ cat /etc/bind/zones/db.forward.dotinternetbd.com
+
+	$TTL    604800	
+	@       IN      SOA     ipv6-dns.dotinternetbd.com. root.dotinternetbd.com. (
+											2               ; Serial
+											604800          ; Refresh
+											86400           ; Retry
+											2419200         ; Expire
+											604800 )        ; Negative Cache TTL
+	;	
+							IN           NS              ipv6-dns.dotinternetbd.com.
+	ipv6-dns                IN           AAAA            2401:f40:8000::8888
+
+	
+	
+	++ cat /etc/bind/zones/db.reverse.dotinternetbd.com
+
+	$TTL    604800
+	
+	@       IN      SOA     ipv6-dns.dotinternetbd.com. root.dotinternetbd.com. (
+											2              ; Serial
+											604800         ; Refresh
+											86400          ; Retry
+											2419200        ; Expire
+											604800 )       ; Negative Cache TTL
+	;
+	
+										   IN      NS      ipv6-dns.dotinternetbd.com.
+	8.8.8.8.0.0.0.0.0.0.0.0.0.0.0.0        IN      PTR     ipv6-dns.dotinternetbd.com.
+
+
+
+
+
 
 
 
