@@ -55,13 +55,15 @@
 	
 	
 	
+	##bgp-config##
+	https://fastnetmon.com/docs-fnm-advanced/fastnetmon-bgp-unicast-configuration/
+	
 	fcli
-	set bgp ipv4_unicast enabled
-	set bgp local_address 59.153.100.158
-	set bgp local_asn 134732
-	set bgp name zip-cyber-cafe-bgp
-	set bgp remote_address 59.153.100.157
-	set bgp remote_asn 134732
+	set bgp  zip-cyber-cafe-bgp
+	set bgp  zip-cyber-cafe-bgp local_asn 65001
+        set bgp  zip-cyber-cafe-bgp remote_asn 65001
+	set bgp  zip-cyber-cafe-bgp local_address 11.22.33.44
+	set bgp  zip-cyber-cafe-bgp remote_address 22.33.44.55 
 	commmit
 
 
