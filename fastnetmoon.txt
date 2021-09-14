@@ -1,0 +1,67 @@
+
+
+
+
+	wget https://install.fastnetmon.com/installer -Oinstaller
+	chmod +x installer
+	./installer
+	
+	wget http://install.fastnetmon.com/installer -Oinstaller
+	chmod +x installer
+	./installer -install_graphic_stack
+	https://fastnetmon.com/docs-fnm-advanced/advanced-visual-traffic/
+	https://fastnetmon.com/docs-fnm-advanced/fastnetmon-attack-notification-in-grafana/
+	
+	
+	fcli
+	set main influxdb_database fastnetmon 
+	set main influxdb_host 127.0.0.1 
+	set main influxdb_port 8086 
+	set main influxdb_push_period 1 
+	set main influxdb enable
+	commit
+	
+	
+	fcli
+	set main networks_list 103.92.204.0/24	
+	set main networks_list 103.92.205.0/24	
+	set main networks_list 103.92.206.0/24	
+	set main networks_list 103.92.207.0/24	
+	commit
+	
+	
+	fcli
+	set main netflow enable
+	set main netflow_ports 2055
+	set main netflow_host 0.0.0.0
+	set main netflow_sampling_ratio 10
+	set main netflow_custom_sampling_ratio_enable enable
+	set main average_calculation_time 30
+	set main average_calculation_time_for_subnets 30
+	set main average_calculation_time_for_hostgroups 30
+	commit
+	
+	
+	fcli
+	set hostgroup zip-cyber-cafe
+	set hostgroup zip-cyber-cafe threshold_mbps 500
+	set hostgroup zip-cyber-cafe ban_for_bandwidth enable
+	set hostgroup zip-cyber-cafe enable_ban enable
+	set hostgroup zip-cyber-cafe networks 103.92.204.0/24
+	set hostgroup zip-cyber-cafe networks 103.92.205.0/24
+	set hostgroup zip-cyber-cafe networks 103.92.206.0/24
+	set hostgroup zip-cyber-cafe networks 103.92.207.0/24
+	commit
+	
+	
+	
+	fcli
+	set bgp ipv4_unicast enabled
+	set bgp local_address 59.153.100.158
+	set bgp local_asn 134732
+	set bgp name zip-cyber-cafe-bgp
+	set bgp remote_address 59.153.100.157
+	set bgp remote_asn 134732
+	commmit
+
+
