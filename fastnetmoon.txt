@@ -64,6 +64,7 @@
         set bgp  zip-cyber-cafe-bgp remote_asn 65001
 	set bgp  zip-cyber-cafe-bgp local_address 11.22.33.44
 	set bgp  zip-cyber-cafe-bgp remote_address 22.33.44.55 
+	set bgp  zip-cyber-cafe-bgp active enable	
 	commmit
 
 
