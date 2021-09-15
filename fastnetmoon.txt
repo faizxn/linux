@@ -68,3 +68,58 @@
 	commmit
 
 
+
+	++JUNIPER++RTBH++
+
+	set chassis fpc 4 sampling-instance ipfix
+	set chassis fpc 5 sampling-instance ipfix
+	
+	set interfaces ae1 unit 422 family inet sampling input
+	set interfaces ae2 unit 705 family inet sampling input
+	set interfaces ae3 unit 403 family inet sampling input
+	
+	set forwarding-options sampling instance ipfix input rate 40000
+	set forwarding-options sampling instance ipfix family inet output flow-server 59.153.100.158 port 2055
+	set forwarding-options sampling instance ipfix family inet output flow-server 59.153.100.158 version-ipfix template ipv4
+	set forwarding-options sampling instance ipfix family inet output inline-jflow source-address 59.153.100.157
+	
+	set protocols bgp group FASTNET neighbor 59.153.100.158 local-address 59.153.100.157
+	set protocols bgp group FASTNET neighbor 59.153.100.158 import FASTNET_IN
+	set protocols bgp group FASTNET neighbor 59.153.100.158 export FASTNET_OUT
+	set protocols bgp group FASTNET neighbor 59.153.100.158 peer-as 134732
+	
+
+	++UPSTREAM-RTBH-PEERS++
+	
+
+	set policy-options community FASTNET-IN members 65535:666
+	
+	set policy-options policy-statement FASTNET-IN term 1 from community FASTNET-IN
+	set policy-options policy-statement FASTNET-IN term 1 from route-filter 0.0.0.0/0 upto /32
+	set policy-options policy-statement FASTNET-IN term 1 then local-preference add 800
+	set policy-options policy-statement FASTNET-IN term 1 then accept
+	set policy-options policy-statement FASTNET-IN term 1000 then reject	
+	
+	set policy-options policy-statement FASTNET-OUT term 1000 then reject
+	
+
+	++UPSTREAM-RTBH-PEERS++
+
+	set policy-options community LEVEL3-DDOS-TAG members 58682:444
+	
+	set policy-options policy-statement L3-DDOS-OUT term 1 from community FASTNET_IN
+	set policy-options policy-statement L3-DDOS-OUT term 1 then community add LEVEL3-DDOS-TAG
+	set policy-options policy-statement L3-DDOS-OUT term 1 then accept
+	
+	set policy-options policy-statement L3-DDOS-OUT term 2 from route-filter 59.153.100.1/32 exact
+	set policy-options policy-statement L3-DDOS-OUT term 2 from route-filter 59.153.100.2/32 exact
+	set policy-options policy-statement L3-DDOS-OUT term 2 from route-filter 59.153.100.3/32 exact
+	set policy-options policy-statement L3-DDOS-OUT term 2 from route-filter 59.153.100.4/32 exact
+	set policy-options policy-statement L3-DDOS-OUT term 2 from route-filter 59.153.100.5/32 exact
+	set policy-options policy-statement L3-DDOS-OUT term 2 then community add LEVEL3-DDOS-TAG
+	set policy-options policy-statement L3-DDOS-OUT term 2 then accept
+	set policy-options policy-statement L3-DDOS-OUT term 1000 then reject
+	
+	set policy-options policy-statement L3-DDOS-IN term 1000 then reject
+	
+
