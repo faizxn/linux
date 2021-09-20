@@ -1,45 +1,33 @@
 
+
+	# System Security: keeping linux up to date. Validating package and update strategy.
 	
-	+ yum -y install yum-plugin-security	
-	+ yum updateinfo 
-	+ yum updateinfo list
-	+ yum updateinfo RHSA-2016:0176 | less						
+		- managing file system security properties (LUCKS and AIDE)
+		- securing server access using (GRUB)
+		- configuring system logging and secure remote logging and filtering 
+		- managing system auditing and read audit log and reporting
+		- managing (MAC) mandatory access control using (SELINUX | APPARMOR)
+		- managing kernel security and arhirecture and vulnerablity. 
+		
+		
+	# User Security:
 	
+		- installing central authentication (LDAP | KERBEROS | FREEIPA)
+		- managing user account (PAM)
+		- managing linux permission and attributes
 	
-	+ apt -s dist-upgrade | grep "^Inst" | grep -i secure												||  -i > insensitive-case
-	+ apt -s dist-upgrade | grep "^Inst" | awk -F " "'{ print $2 }' | xargs apt-get install
-	+ apt-cache search net-tools																		|| validate package
-
-
-	-> disk-encryption:
-
-	+ fdisk /dev/sdb
-	+ cryptsetup luksFormat /dev/sdb1
-	+ cryptsetup luksOpen /dev/sdb1 secret-disk
-	+  ls /dev/mapper/													
-
-	+ mkfs.ext4 /dev/mapper/secret-disk
-	+ blkid
-	+ mkdir secret-disk
-	+ mount /dev/mapper/secret-disk /root/secret-disk/													|| temp-mount or permanent mount
+	# Service Security:
 	
-	+ cd root/secret-disk/		> touch file-1 file-2 file-3 file-4
+		- applying secure remote access (FreeRadius | OpenVPN)
+		- securing network file system (nfsv4, cifs)
+		- securing service (DNS | SSH | APACHE | VSTP)
+		
+		
+	# Infrastructure Security:
 	
-	+ cryptsetup -v status secret-disk
-	+ cryptsetup luksClose /dev/mapper/secret-disk
-	
-	
-
-
-
-	
-	
-	
-	
-
-
-
-
-
- 
- 
+		- managing GPG (GnuPG to encrypt email/files)
+		- managing certificate and PKI
+		- managing firewall (IPTables | Firewalld | UFW)
+		- analyse and instrusion (snort | ntop)
+		- sniffing and port scanning (tcpdump | wireshark | nmap | nessus | tripwire)
+		
